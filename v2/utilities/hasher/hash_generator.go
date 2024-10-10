@@ -1,5 +1,7 @@
 package hasher
 
+import "fmt"
+
 type HashGenerator[T HashOutType] struct {
 	hashFunction   HashFunction[T]
 	hashFamily     string
@@ -22,6 +24,16 @@ func NewHashGenerator[T HashOutType](hashFamily string, platformBit uint, output
 	}
 
 	return hashGenerator, nil
+}
+
+func (g HashGenerator[T]) String() string {
+	return fmt.Sprintf(
+		"hash(x) = [%s;%d;%d], method = %s",
+		g.hashFamily,
+		g.platformBit,
+		g.outputBit,
+		g.generateMethod,
+	)
 }
 
 func (g *HashGenerator[T]) GenerateHash(data []byte, seed T, hashCeil uint, times uint) ([]T, error) {

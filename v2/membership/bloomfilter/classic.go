@@ -31,7 +31,8 @@ func ClassicBFEstimateParams(fpr float64, elems uint) (m, k uint) {
 	return m, k
 }
 
-func (f *ClassicBF[T]) Cap() uint { return f.cap }
+func (f *ClassicBF[T]) Cap() uint        { return f.cap }
+func (f *ClassicBF[T]) HashAttr() string { return f.h.String() }
 
 func (f *ClassicBF[T]) Add(data []byte) *ClassicBF[T] {
 	hashes, _ := f.h.GenerateHash(data, 0, f.cap, f.k)

@@ -5,6 +5,8 @@ package hasher
 import (
 	"encoding/binary"
 	"math/bits"
+
+	"github.com/spaolacci/murmur3"
 )
 
 // constants using for block mix
@@ -33,7 +35,7 @@ func fmix64(h uint64) uint64 {
 
 // hash into 128-bit representation of data
 // (64 MSBs in 1st 64-bit hash and 64 LSBs in 2nd 64-bit hash)
-func murmur3Hash128(data []byte, seed uint64) ([]uint64, error) {
+func murmur3Hash128Default(data []byte, seed uint64) ([]uint64, error) {
 	dataLength := uint64(len(data))
 	// initialize 2 64-bit hash repr of final 128-bit output
 	h1 := seed
@@ -160,4 +162,29 @@ func murmur3Hash128(data []byte, seed uint64) ([]uint64, error) {
 	h2 += h1
 
 	return []uint64{h1, h2}, nil
+}
+
+func murmur3Hash128Spaolacci(data []byte, seed uint64) ([]uint64, error) {
+	hf := murmur3.New128WithSeed(uint32(seed))
+	_, err := hf.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	h1, h2 := hf.Sum128()
+	return []uint64{h1, h2}, nil
+}
+
+func murmur3Hash64Spaolacci(data []byte, seed uint64) ([]uint64, error) {
+	hf := murmur3.New64WithSeed(uint32(seed))
+	_, err := hf.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	return []uint64{hf.Sum64()}, nil
+}
+
+func murmur3Hash256Bnb(data []byte, seed uint64) ([]uint64, error) {
+	var hf digest128
+	h1, h2, h3, h4 := hf.sum256(data)
+	return []uint64{h1, h2, h3, h4}, nil
 }

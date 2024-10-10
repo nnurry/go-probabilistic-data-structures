@@ -13,7 +13,8 @@ type CountingBF[T hasher.HashOutType] struct {
 	h      hasher.HashGenerator[T]
 }
 
-func (f *CountingBF[T]) Cap() uint { return f.cap }
+func (f *CountingBF[T]) Cap() uint        { return f.cap }
+func (f *CountingBF[T]) HashAttr() string { return f.h.String() }
 
 func (f *CountingBF[T]) Add(data []byte) *CountingBF[T] {
 	hashes, _ := f.h.GenerateHash(data, 0, f.cap, f.k)

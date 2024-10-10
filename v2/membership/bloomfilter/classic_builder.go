@@ -14,7 +14,7 @@ type ClassicBFBuilder[T hasher.HashOutType] struct {
 
 func NewClassicBFBuilder[T hasher.HashOutType]() *ClassicBFBuilder[T] {
 	defaultCap, defaultK := ClassicBFEstimateParams(0.01, 10000)
-	defaultHasher, _ := hasher.NewHashGenerator[T]("murmur3", 64, 128, "extended-double-hashing")
+	defaultHasher, _ := hasher.NewHashGenerator[T]("murmur3Hash128Default", 64, 128, "standard")
 	defaultRegister, _ := register.NewRegister(defaultCap, 1)
 	return &ClassicBFBuilder[T]{
 		cap: defaultCap,

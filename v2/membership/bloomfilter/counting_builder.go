@@ -17,7 +17,7 @@ func NewCountingBFBuilder[T hasher.HashOutType]() *CountingBFBuilder[T] {
 	// AFAIK, classic BF and counting BF's optimal parameters are similar
 	// so let's use optimization function of classic BF
 	defaultCap, defaultK := ClassicBFEstimateParams(0.01, 10000)
-	defaultHasher, _ := hasher.NewHashGenerator[T]("murmur3", 64, 128, "extended-double-hashing")
+	defaultHasher, _ := hasher.NewHashGenerator[T]("murmur3Hash128Default", 64, 128, "standard")
 	defaultBitRegister, _ := register.NewRegister(defaultCap, 1)
 	defaultCountRegister, _ := register.NewRegister(defaultCap, 4)
 	return &CountingBFBuilder[T]{

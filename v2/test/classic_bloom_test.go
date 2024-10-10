@@ -2,13 +2,19 @@ package test
 
 import (
 	"fmt"
+	"log"
 	"testing"
+	"time"
 
 	"github.com/nnurry/probabilistics/v2/membership/bloomfilter"
+	"github.com/nnurry/probabilistics/v2/utilities/hasher"
 	"github.com/nnurry/probabilistics/v2/utilities/register"
 )
 
-func testClassicBloomHelperBasic(fpr float64, elems uint, populationRatio float64, generateMethod string) {
+func testClassicBloomHelperBasic(
+	fpr float64, elems uint, populationRatio float64, generateMethod string, hashFuncAttr hasher.HashAttribute) int64 {
+	start := time.Now() // Start the timer
+
 	testFp := fpr
 	testN := elems
 	testHashGenerateMethod := generateMethod
@@ -23,33 +29,45 @@ func testClassicBloomHelperBasic(fpr float64, elems uint, populationRatio float6
 		SetCap(optM).
 		SetHashNum(optK).
 		SetRegister(r.(*register.BitRegister)).
-		SetHashGenerator("murmur3", 64, 128, testHashGenerateMethod)
+		SetHashGenerator(
+			hashFuncAttr.HashFamily,
+			hashFuncAttr.PlatformBit,
+			hashFuncAttr.OutputBit,
+			testHashGenerateMethod,
+		)
 	bf := builder.Build()
+	log.Println("bloom:", bf)
 
 	typeName := fmt.Sprintf("%T", bf)
-	fmt.Println("type of bloom filter:", typeName)
-	fmt.Printf(
-		"fpr = %.2f %%, n = %v, real n = %d / %f%% = %d\nm = %d, k = %d, gen method = %s\n",
+	log.Println("type of bloom filter:", typeName)
+	log.Printf(
+		"fpr = %.2f %%, n = %v, real n = %d / %f%% = %d\nm = %d, k = %d, hash = [%s]\n",
 		testFp*100,
 		testN,
 		testN, populationRatio*100, realTestN,
 		optM,
 		optK,
-		testHashGenerateMethod,
+		bf.HashAttr(),
 	)
 
 	data := [][]byte{}
 
 	for i := uint(0); i < realTestN; i++ {
-		value := []byte(fmt.Sprintf("data %b", i))
+		value := []byte(fmt.Sprintf("data something is pretty long long long long long to hash%b", i))
 		data = append(data, value)
 	}
-	fmt.Printf("prepared %d test elements\n", realTestN)
+	log.Printf("prepared %d test elements\n", realTestN)
+
+	var addDuration int64 = 0
+	var queryDuration int64 = 0
 
 	for i := range data[:testN] {
+		addTime := time.Now()
 		bf.Add(data[i])
+		addDuration += time.Since(addTime).Microseconds()
 	}
-	fmt.Printf("added %d test elements\n", testN)
+
+	log.Printf("added %d test elements (%d mis)\n", testN, addDuration)
 
 	expectedFalseCount := realTestN - testN
 	expectedFalsePerc := float64(expectedFalseCount) * 100 / float64(realTestN)
@@ -57,7 +75,9 @@ func testClassicBloomHelperBasic(fpr float64, elems uint, populationRatio float6
 	tp, fp, tn, fn := 0, 0, 0, 0
 
 	for i := range data {
+		queryTime := time.Now()
 		ok := bf.Contains(data[i])
+		queryDuration += time.Since(queryTime).Microseconds()
 		if uint(i) < testN {
 			// checking added data
 			if ok {
@@ -80,40 +100,48 @@ func testClassicBloomHelperBasic(fpr float64, elems uint, populationRatio float6
 			}
 		}
 	}
+
+	log.Printf("queried %d elements (%d mis)\n", len(data), queryDuration)
+
 	falsePerc := float64(falseCount*100.0) / float64(realTestN)
 
 	pos, neg := register.GetBitNums(r)
 	loadFactor := float64(testN) * 100 / float64(bf.Cap())
 	bitLoadFactor := float64(pos) * 100 / float64(pos+neg)
 
-	fmt.Printf("checked %d test elements\n", realTestN)
+	log.Printf("checked %d test elements\n", realTestN)
 
-	fmt.Printf("load factor = %.2f %% (%d / %d) \n", loadFactor, testN, bf.Cap())
-	fmt.Printf("bit load factor = %.2f %% (%d / %d) \n", bitLoadFactor, pos, pos+neg)
+	log.Printf("load factor = %.2f %% (%d / %d) \n", loadFactor, testN, bf.Cap())
+	log.Printf("bit load factor = %.2f %% (%d / %d) \n", bitLoadFactor, pos, pos+neg)
 
-	fmt.Printf("false count: %v (%.2f %%)\n", falseCount, falsePerc)
-	fmt.Printf("expected false count: %v (%.2f %%)\n", expectedFalseCount, expectedFalsePerc)
+	log.Printf("false count: %v (%.2f %%)\n", falseCount, falsePerc)
+	log.Printf("expected false count: %v (%.2f %%)\n", expectedFalseCount, expectedFalsePerc)
 
-	fmt.Printf("true/false P = %v / %v, true/false N = %v / %v\n",
-		tp, fp,
-		tn, fn,
-	)
+	executionTime := time.Since(start).Microseconds()
+	log.Printf("execution time = (%d mis)\n", executionTime)
+	return executionTime
 }
 
 func TestClassicBloomCreate(t *testing.T) {
 	bf := bloomfilter.NewClassicBFBuilder[uint64]().Build()
 	typeName := fmt.Sprintf("%T", bf)
-	fmt.Println("type of bloom filter:", typeName)
+	log.Println("type of bloom filter:", typeName)
 }
 
 func TestClassicBloomBasic(t *testing.T) {
+	log.Printf("\n\n---------classic bloom filter ---------\n\n")
+
 	testFp := 0.1
 	testN := uint(4 * 100000)
 	populationRatio := 1 / 30.0
-	fmt.Printf("\n\n---------test for standard---------\n\n")
-	testClassicBloomHelperBasic(testFp, testN, populationRatio, "standard")
-	fmt.Printf("\n\n---------test for extended double hashing---------\n\n")
-	testClassicBloomHelperBasic(testFp, testN, populationRatio, "extended-double-hashing")
-	fmt.Printf("\n\n---------test for kirsch-mitzenmacher---------\n\n")
-	testClassicBloomHelperBasic(testFp, testN, populationRatio, "kirsch-mitzenmacher")
+
+	for _, hashFuncAttr := range hasher.HashFunctionAttributes {
+		log.Printf("\n\n---------test for standard---------\n\n")
+		testClassicBloomHelperBasic(testFp, testN, populationRatio, "standard", hashFuncAttr)
+		// log.Printf("\n\n---------test for extended double hashing---------\n\n")
+		// testClassicBloomHelperBasic(testFp, testN, populationRatio, "extended-double-hashing", hashFuncAttr)
+		// log.Printf("\n\n---------test for kirsch-mitzenmacher---------\n\n")
+		// testClassicBloomHelperBasic(testFp, testN, populationRatio, "kirsch-mitzenmacher", hashFuncAttr)
+
+	}
 }
